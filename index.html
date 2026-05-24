@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SmartReplayOps — Trade Recovery Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#080c12;--panel:#0d1219;--surface:#111923;--lift:#161f2b;--border:#1e2d3d;--border2:#243445;--text:#d4dde8;--muted:#5a7a96;--dim:#3a5570;--blue:#3b82f6;--cyan:#22d3ee;--green:#10b981;--amber:#f59e0b;--red:#ef4444;--purple:#8b5cf6;--teal:#0d9488;--rose:#f43f5e;--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:0.15;pointer-events:none;z-index:0}
+.shell{position:relative;z-index:1}
+.topbar{display:flex;align-items:center;padding:0 24px;height:52px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px;margin-right:32px}
+.logo-icon{width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:14px}
+.logo-text{font-weight:600;font-size:14px}
+.logo-sub{font-size:10px;color:var(--muted);font-family:var(--mono);margin-left:4px}
+.nav-tabs{display:flex;height:52px}
+.nav-tab{display:flex;align-items:center;gap:6px;padding:0 15px;font-size:12px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.status-pill{display:flex;align-items:center;gap:6px;font-size:11px;font-family:var(--mono);background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:4px 10px}
+.pulse{width:7px;height:7px;border-radius:50%;animation:pulse 2s infinite}
+.pulse-green{background:var(--green);box-shadow:0 0 6px var(--green)}
+.pulse-red{background:var(--red);box-shadow:0 0 6px var(--red);animation-duration:.8s}
+.pulse-amber{background:var(--amber)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.content{padding:24px;display:none}
+.content.active{display:block}
+.section-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-title{font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px}
+.stat-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:14px}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 12px}
+.stat-val{font-size:26px;font-weight:600;font-family:var(--mono);line-height:1;margin-bottom:4px}
+.stat-lbl{font-size:10px;color:var(--muted)}
+.mq-bar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 18px;margin-bottom:14px}
+.mq-indicator{display:flex;align-items:center;gap:8px;font-weight:500;font-size:13px}
+.mq-metric{display:flex;flex-direction:column;gap:2px}
+.mq-metric-val{font-family:var(--mono);font-size:13px;font-weight:500}
+.mq-metric-lbl{font-size:10px;color:var(--muted)}
+.divider-v{width:1px;height:28px;background:var(--border);flex-shrink:0}
+.alert-tag{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px;font-weight:500}
+.alert-red{background:#7f1d1d33;border:1px solid var(--red);color:#fca5a5}
+.alert-amber{background:#78350f33;border:1px solid var(--amber);color:#fcd34d}
+.alert-green{background:#14532d33;border:1px solid var(--green);color:#6ee7b7}
+.alert-blue{background:#1e3a5f33;border:1px solid var(--blue);color:#93c5fd}
+.alert-purple{background:#2e106533;border:1px solid var(--purple);color:#c4b5fd}
+.alert-teal{background:#0f766e33;border:1px solid var(--teal);color:#5eead4}
+.table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead th{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface);text-align:left;white-space:nowrap}
+tbody td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:12px}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{cursor:pointer;transition:background .1s}
+tbody tr:hover{background:var(--surface)}
+tbody tr.selected{background:var(--lift)}
+.mono{font-family:var(--mono)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;font-family:var(--mono);white-space:nowrap}
+.b-completed{background:#14532d33;border:1px solid #10b98155;color:#6ee7b7}
+.b-failed{background:#7f1d1d33;border:1px solid var(--red);color:#fca5a5}
+.b-replaying{background:#2e106533;border:1px solid var(--purple);color:#c4b5fd}
+.b-replay_success{background:#14532d33;border:1px solid var(--green);color:#6ee7b7}
+.b-replay_failed{background:#7f1d1d33;border:1px solid var(--red);color:#fca5a5}
+.b-awaiting{background:#78350f33;border:1px solid var(--amber);color:#fcd34d}
+.b-pending{background:#1e3a5f33;border:1px solid var(--blue);color:#93c5fd}
+.b-quarantined{background:#4c1d9533;border:1px solid var(--purple);color:#c4b5fd}
+.b-requires_amendment{background:#78350f33;border:1px solid var(--rose);color:#fda4af}
+.b-superseded{background:#1e293b;border:1px solid var(--dim);color:var(--muted)}
+.b-closed{background:#1e293b;border:1px solid var(--dim);color:var(--muted)}
+.dir-buy{color:var(--green);font-weight:600;font-family:var(--mono);font-size:11px}
+.dir-sell{color:var(--red);font-weight:600;font-family:var(--mono);font-size:11px}
+.stage-pill{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface);padding:1px 6px;border-radius:3px;border:1px solid var(--border2)}
+.itype-pill{font-size:10px;font-weight:500;padding:1px 6px;border-radius:3px;font-family:var(--mono)}
+.itype-EQUITY{background:#1e3a5f33;color:#93c5fd;border:1px solid #1e3a5f}
+.itype-FX{background:#14532d33;color:#6ee7b7;border:1px solid #14532d}
+.itype-RATES{background:#2e106533;color:#c4b5fd;border:1px solid #2e1065}
+.itype-CREDIT{background:#78350f33;color:#fcd34d;border:1px solid #78350f}
+.detail-panel{display:none;margin-top:16px}
+.detail-panel.open{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.detail-title{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.kv{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.kv:last-child{border-bottom:none}
+.kv-label{color:var(--muted)}
+.check-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)}
+.check-row:last-child{border-bottom:none}
+.check-left{display:flex;align-items:center;gap:8px;font-size:12px}
+.assessment{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:12px;font-size:12px;margin-top:10px}
+.assessment-scope{font-family:var(--mono);color:var(--cyan);font-size:11px;background:#0c2a3a;padding:4px 10px;border-radius:4px;margin-bottom:8px;display:inline-block}
+.warn-box{background:#78350f18;border:1px solid #78350f77;border-radius:6px;padding:8px 10px;font-size:11px;color:#fcd34d;margin-top:8px}
+.info-box{background:#1e3a5f18;border:1px solid #1e3a5f77;border-radius:6px;padding:8px 10px;font-size:11px;color:#93c5fd;margin-top:8px}
+.success-box{background:#14532d18;border:1px solid #14532d77;border-radius:6px;padding:8px 10px;font-size:11px;color:#6ee7b7;margin-top:8px}
+.danger-box{background:#7f1d1d18;border:1px solid #7f1d1d77;border-radius:6px;padding:8px 10px;font-size:11px;color:#fca5a5;margin-top:8px}
+.tl-row{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start;font-size:12px}
+.tl-row:last-child{border-bottom:none}
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.tl-body{flex:1}
+.tl-event{font-weight:500;font-family:var(--mono);font-size:11px}
+.tl-detail{color:var(--muted);font-size:11px;margin-top:2px}
+.tl-corr{color:var(--blue);font-family:var(--mono);font-size:10px;margin-top:2px}
+.tl-time{font-family:var(--mono);font-size:10px;color:var(--dim);white-space:nowrap}
+.tl-outcome{font-size:10px;font-family:var(--mono);padding:1px 5px;border-radius:3px}
+.tl-success{background:#14532d33;color:#6ee7b7}
+.tl-failed{background:#7f1d1d33;color:#fca5a5}
+.tl-pending{background:#78350f33;color:#fcd34d}
+.tl-info{background:#1e3a5f33;color:#93c5fd}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);color:var(--text);cursor:pointer;font-size:12px;font-family:var(--sans);transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--lift)}
+.btn-primary{background:#1d3a6e;border-color:var(--blue);color:#93c5fd}
+.btn-success{background:#14532d33;border-color:var(--green);color:#6ee7b7}
+.btn-danger{background:#7f1d1d33;border-color:var(--red);color:#fca5a5}
+.btn-warning{background:#78350f33;border-color:var(--amber);color:#fcd34d}
+.btn-replay{background:linear-gradient(135deg,#2e1065,#1d3a6e);border-color:var(--purple);color:#c4b5fd}
+.btn-sm{padding:4px 10px;font-size:11px}
+.break-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.break-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;transition:border-color .2s}
+.break-card.active{border-color:var(--red);background:#7f1d1d08}
+.break-icon{font-size:26px;margin-bottom:8px}
+.break-title{font-weight:600;font-size:13px;margin-bottom:3px}
+.break-level{font-size:10px;font-family:var(--mono);color:var(--purple);background:#2e106522;padding:2px 6px;border-radius:3px;margin-bottom:8px;display:inline-block}
+.break-desc{font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6}
+.break-effect{font-family:var(--mono);font-size:10px;color:var(--amber);background:#78350f18;border:1px solid #78350f55;border-radius:5px;padding:7px 9px;margin-bottom:12px}
+.active-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);color:var(--red);background:#7f1d1d33;border:1px solid var(--red);border-radius:4px;padding:2px 8px;margin-bottom:8px}
+.gov-matrix{width:100%;border-collapse:collapse;margin-top:8px;font-size:11px}
+.gov-matrix th{background:var(--surface);color:var(--muted);padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--border)}
+.gov-matrix td{padding:7px 10px;border:1px solid var(--border);font-family:var(--mono)}
+.steps{display:flex;flex-direction:column;gap:8px}
+.step{display:flex;gap:10px;align-items:flex-start}
+.step-num{width:20px;height:20px;border-radius:50%;background:var(--surface);border:1px solid var(--blue);color:var(--blue);font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;font-family:var(--mono)}
+.step-text{font-size:12px;font-weight:500}
+.step-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.audit-filter{background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;color:var(--text);font-size:12px;font-family:var(--sans);width:220px;outline:none}
+.notif{position:fixed;bottom:20px;right:20px;z-index:999;background:var(--panel);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;max-width:320px;font-size:12px;transform:translateY(80px);opacity:0;transition:all .3s;pointer-events:none}
+.notif.show{transform:translateY(0);opacity:1}
+.notif-title{font-weight:600;margin-bottom:3px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="topbar">
+  <div class="logo">
+    <div class="logo-icon">⟳</div>
+    <div><div class="logo-text">SmartReplayOps</div></div>
+    <span class="logo-sub">TRADE RECOVERY PLATFORM</span>
+  </div>
+  <nav class="nav-tabs">
+    <div class="nav-tab active" onclick="showTab('dashboard',this)">⬛ Dashboard</div>
+    <div class="nav-tab" onclick="showTab('trades',this)">≡ Trades</div>
+    <div class="nav-tab" onclick="showTab('governance',this)">🛡 Governance</div>
+    <div class="nav-tab" onclick="showTab('audit',this)">📋 Audit log</div>
+    <div class="nav-tab" onclick="showTab('break',this)">⚡ Break things</div>
+    <div class="nav-tab" onclick="showTab('about',this)">ℹ About</div>
+  </nav>
+  <div class="topbar-right">
+    <div class="status-pill" id="mq-pill"><span class="pulse pulse-green" id="mq-dot"></span><span id="mq-label">MQ CONNECTED</span></div>
+    <div class="status-pill" style="font-size:10px;color:var(--muted)" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<!-- DASHBOARD -->
+<div class="content active" id="tab-dashboard">
+  <div class="section-row">
+    <span class="section-title">Operations overview</span>
+    <span style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="last-refresh">Live · refreshing</span>
+  </div>
+  <div class="mq-bar" id="mq-bar">
+    <div class="mq-indicator"><span class="pulse pulse-green" id="dash-mq-dot"></span><span id="dash-mq-label">RabbitMQ — Connected</span></div>
+    <div class="divider-v"></div>
+    <div class="mq-metric"><span class="mq-metric-val" id="q-inbound">0</span><span class="mq-metric-lbl">Inbound queue</span></div>
+    <div class="mq-metric"><span class="mq-metric-val" id="q-dlq" style="color:var(--green)">0</span><span class="mq-metric-lbl">DLQ depth</span></div>
+    <div class="mq-metric"><span class="mq-metric-val" id="q-outbound">0</span><span class="mq-metric-lbl">Outbound queue</span></div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center" id="scenario-tags"><span class="alert-tag alert-green">● All systems nominal</span></div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat"><div class="stat-val" id="stat-total" style="color:var(--blue)">16</div><div class="stat-lbl">Total trades</div></div>
+    <div class="stat"><div class="stat-val" id="stat-failed" style="color:var(--red)">4</div><div class="stat-lbl">Failed</div></div>
+    <div class="stat"><div class="stat-val" id="stat-replaying" style="color:var(--purple)">1</div><div class="stat-lbl">Replaying</div></div>
+    <div class="stat"><div class="stat-val" id="stat-approval" style="color:var(--amber)">2</div><div class="stat-lbl">Awaiting approval</div></div>
+    <div class="stat"><div class="stat-val" id="stat-quarantined" style="color:var(--purple)">1</div><div class="stat-lbl">Quarantined</div></div>
+    <div class="stat"><div class="stat-val" id="stat-amendment" style="color:var(--rose)">1</div><div class="stat-lbl">Requires amendment</div></div>
+    <div class="stat"><div class="stat-val" id="stat-success" style="color:var(--green)">5</div><div class="stat-lbl">Recovered</div></div>
+  </div>
+  <div class="section-row"><span class="section-title">Recent audit events</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Event</th><th>Trade</th><th>Initiator</th><th>Detail</th><th>Outcome</th></tr></thead><tbody id="dash-audit-rows"></tbody></table></div>
+</div>
+
+<!-- TRADES -->
+<div class="content" id="tab-trades">
+  <div class="section-row">
+    <span class="section-title">Trade ledger</span>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" onclick="renderTrades()">↻ Refresh</button>
+      <button class="btn btn-primary btn-sm" onclick="simulateNewTrade()">+ Produce trade</button>
+    </div>
+  </div>
+  <div class="table-wrap" style="margin-bottom:14px">
+    <table><thead><tr><th>Ref</th><th>Instrument</th><th>Type</th><th>Dir</th><th>Notional</th><th>CCY</th><th>Counterparty</th><th>Status</th><th>Stage</th><th>Failure</th><th>Retries</th><th>Cut-off</th></tr></thead><tbody id="trade-rows"></tbody></table>
+  </div>
+  <div class="detail-panel" id="detail-panel">
+    <div class="card" style="padding:14px"><div class="detail-title">Trade details</div><div id="detail-kv"></div></div>
+    <div class="card" style="padding:14px"><div class="detail-title">Downstream state & replay assessment</div><div id="detail-ds"></div><div id="detail-assessment"></div></div>
+    <div class="card" style="padding:14px"><div class="detail-title">Audit timeline</div><div id="detail-audit"></div></div>
+  </div>
+</div>
+
+<!-- GOVERNANCE -->
+<div class="content" id="tab-governance">
+  <div class="section-row"><span class="section-title">Governance & controls</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <div class="card">
+      <div class="detail-title" style="margin-bottom:10px">Approval matrix — by instrument type</div>
+            <table class="gov-matrix">
+        <thead><tr><th>Instrument</th><th>Auto-replay limit</th><th>Above limit</th><th>Special rule</th></tr></thead>
+        <tbody>
+          <tr><td><span class="itype-pill itype-EQUITY">EQUITY</span></td><td style="color:var(--green)">≤ $500,000</td><td style="color:var(--amber)">Manual approval</td><td style="color:var(--muted)">T+1 settlement via DTCC</td></tr>
+          <tr><td><span class="itype-pill itype-FX">FX</span></td><td style="color:var(--green)">≤ $2,000,000</td><td style="color:var(--amber)">Manual approval</td><td style="color:var(--muted)">Bilateral — reversible T+2</td></tr>
+          <tr><td><span class="itype-pill itype-RATES">RATES</span></td><td style="color:var(--red)">None — always manual</td><td style="color:var(--red)">Always manual</td><td style="color:var(--muted)">Notional ≠ exposure</td></tr>
+          <tr><td><span class="itype-pill itype-CREDIT">CREDIT</span></td><td style="color:var(--red)">None — always manual</td><td style="color:var(--red)">Always manual</td><td style="color:var(--muted)">Counterparty risk sensitivity</td></tr>
+        </tbody>
+      </table>
+      <div class="info-box" style="margin-top:10px">Why instrument type matters: a RATES swap with $900K notional can carry $50M+ of interest rate exposure. Notional alone is not a risk measure for derivatives.</div>
+    </div>
+    <div class="card">
+      <div class="detail-title" style="margin-bottom:10px">Settlement cut-off windows</div>
+            <table class="gov-matrix">
+        <thead><tr><th>Asset class</th><th>Settlement</th><th>Cut-off</th><th>Action past cut-off</th></tr></thead>
+        <tbody>
+          <tr><td><span class="itype-pill itype-EQUITY">EQUITY</span></td><td style="color:var(--muted)">T+1 via DTCC</td><td style="color:var(--amber)">16:30 ET</td><td style="color:var(--rose)">REQUIRES_AMENDMENT</td></tr>
+          <tr><td><span class="itype-pill itype-FX">FX</span></td><td style="color:var(--muted)">T+2 via CLS</td><td style="color:var(--amber)">17:00 ET</td><td style="color:var(--rose)">REQUIRES_AMENDMENT</td></tr>
+          <tr><td><span class="itype-pill itype-RATES">RATES</span></td><td style="color:var(--muted)">T+2 LCH</td><td style="color:var(--amber)">15:00 ET</td><td style="color:var(--rose)">REQUIRES_AMENDMENT</td></tr>
+          <tr><td><span class="itype-pill itype-CREDIT">CREDIT</span></td><td style="color:var(--muted)">T+3 DTCC</td><td style="color:var(--amber)">14:00 ET</td><td style="color:var(--rose)">REQUIRES_AMENDMENT</td></tr>
+        </tbody>
+      </table>
+      <div class="warn-box" style="margin-top:10px">If replay is triggered after cut-off, the booking succeeds but settlement silently fails downstream. The system must flag REQUIRES_AMENDMENT and notify the front office — not auto-replay.</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="card">
+      <div class="detail-title" style="margin-bottom:10px">Idempotency controls</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:10px">
+        Checking downstream_state alone is insufficient to prove replay safety. The table is written by the same process that is failing — it may itself be stale or inconsistent.
+      </div>
+      <div style="font-size:12px;font-family:var(--mono);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--cyan);margin-bottom:8px">
+        UNIQUE (trade_ref, workflow_stage)<br/>
+        ON CONFLICT → upsert, not insert<br/>
+        Constraint violation = duplicate detected
+      </div>
+      <div class="success-box">The database enforces idempotency — not application-level state checks alone. If a replay attempts to re-book a trade that was already committed (ACK lost), the unique constraint rejects it with a constraint violation, not a silent success.</div>
+    </div>
+    <div class="card">
+      <div class="detail-title" style="margin-bottom:10px">Poison message & quarantine</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:10px">
+        A poison message fails on every attempt regardless of infrastructure state — malformed data, missing reference data, business rule violation. Without a max-retry limit, the engine loops indefinitely.
+      </div>
+      <table class="gov-matrix">
+        <thead><tr><th>Retry count</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--green)">1–2</td><td style="color:var(--muted)">Auto-retry with backoff</td></tr>
+          <tr><td style="color:var(--amber)">3</td><td style="color:var(--amber)">Re-classify failure type</td></tr>
+          <tr><td style="color:var(--red)">MAX (3)</td><td style="color:var(--red)">QUARANTINED → route to DLQ → manual investigation flag</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- AUDIT LOG -->
+<div class="content" id="tab-audit">
+  <div class="section-row">
+    <span class="section-title">Immutable audit log</span>
+    <input class="audit-filter" id="audit-filter" placeholder="Filter events…" oninput="filterAudit()"/>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Event type</th><th>Trade ref</th><th>Correlation ID</th><th>Initiator</th><th>Detail</th><th>Outcome</th></tr></thead><tbody id="audit-rows"></tbody></table></div>
+</div>
+
+<!-- BREAK THINGS -->
+<div class="content" id="tab-break">
+  <div class="section-row">
+    <span class="section-title">Failure scenario injection</span>
+    <button class="btn btn-success" onclick="healAll()">✓ Heal all systems</button>
+  </div>
+  <div style="background:#14532d18;border:1px solid #14532d55;border-radius:10px;padding:12px 18px;margin-bottom:16px;font-size:12px" id="break-banner">
+    <strong style="color:var(--green)">🟢 All systems healthy</strong> — Inject a scenario below, then go to Trades → Produce trade to observe the failure in action.
+  </div>
+  <div class="break-grid">
+    <div class="break-card" id="bc-mq">
+      <div class="break-icon">📡</div><div class="break-title">MQ Outage</div>
+      <div class="break-level">Level 1</div>
+      <p class="break-desc">Simulates queue manager disconnect. Consumer deduplication check fires on reconnect — trades already partially processed are idempotency-checked before replay.</p>
+      <div class="break-effect">→ Trades fail at RECEIVED stage<br/>failure_type = MQ_OUTAGE<br/>Idempotency check on replay</div>
+      <div id="active-mq" style="display:none"><span class="active-badge"><span class="pulse pulse-red"></span>SCENARIO ACTIVE</span></div>
+      <button class="btn btn-danger" style="width:100%;justify-content:center" onclick="injectScenario('mq')" id="btn-mq">Inject MQ Outage</button>
+    </div>
+    <div class="break-card" id="bc-db">
+      <div class="break-icon">🗄️</div><div class="break-title">DB Timeout</div>
+      <div class="break-level">Level 2</div>
+      <p class="break-desc">DB write timeout at BOOK stage. Replay safety verified via idempotency key check — not just downstream_state. Governance matrix applied by instrument type.</p>
+      <div class="break-effect">→ Trades fail at VALIDATED stage<br/>failure_type = DB_TIMEOUT<br/>Idempotency key confirms no commit</div>
+      <div id="active-db" style="display:none"><span class="active-badge"><span class="pulse pulse-red"></span>SCENARIO ACTIVE</span></div>
+      <button class="btn btn-danger" style="width:100%;justify-content:center" onclick="injectScenario('db')" id="btn-db">Inject DB Timeout</button>
+    </div>
+    <div class="break-card" id="bc-pp">
+      <div class="break-icon">⚡</div><div class="break-title">Partial Publish</div>
+      <div class="break-level">Level 3</div>
+      <p class="break-desc">Trade books but outbound publish fails. Before PUBLISH_ONLY replay, engine checks downstream consumer health — if settlement system has no active consumers, replay is deferred.</p>
+      <div class="break-effect">→ Trades fail at BOOKED stage<br/>failure_type = PARTIAL_PUBLISH<br/>Downstream health check before replay</div>
+      <div id="active-pp" style="display:none"><span class="active-badge"><span class="pulse pulse-red"></span>SCENARIO ACTIVE</span></div>
+      <button class="btn btn-danger" style="width:100%;justify-content:center" onclick="injectScenario('pp')" id="btn-pp">Inject Partial Publish</button>
+    </div>
+    <div class="break-card" id="bc-cutoff">
+      <div class="break-icon">⏰</div><div class="break-title">Settlement Cut-off Passed</div>
+            <p class="break-desc">Simulates a failure occurring after the settlement cut-off window for the instrument type. Auto-replay is blocked — trade is flagged REQUIRES_AMENDMENT to notify front office.</p>
+      <div class="break-effect">→ status = REQUIRES_AMENDMENT<br/>Auto-replay blocked<br/>Front office notification triggered</div>
+      <div id="active-cutoff" style="display:none"><span class="active-badge"><span class="pulse pulse-red"></span>SCENARIO ACTIVE</span></div>
+      <button class="btn btn-danger" style="width:100%;justify-content:center" onclick="injectScenario('cutoff')" id="btn-cutoff">Inject Cut-off Scenario</button>
+    </div>
+    <div class="break-card" id="bc-poison">
+      <div class="break-icon">☠️</div><div class="break-title">Poison Message</div>
+            <p class="break-desc">Simulates a trade with missing reference data that fails on every attempt. After MAX_RETRIES (3), the trade is quarantined, routed to DLQ, and flagged for manual investigation.</p>
+      <div class="break-effect">→ Retry 1–2: auto-retry with backoff<br/>Retry 3: QUARANTINED<br/>Message routed to DLQ</div>
+      <div id="active-poison" style="display:none"><span class="active-badge"><span class="pulse pulse-red"></span>SCENARIO ACTIVE</span></div>
+      <button class="btn btn-danger" style="width:100%;justify-content:center" onclick="injectScenario('poison')" id="btn-poison">Inject Poison Message</button>
+    </div>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<div class="content" id="tab-about">
+  <div style="max-width:860px">
+    <div class="section-row"><span class="section-title">About SmartReplayOps</span></div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:17px;font-weight:600;margin-bottom:4px">SmartReplayOps</div>
+      <div style="color:var(--muted);margin-bottom:14px;font-size:12px">Intelligent Trade Replay & Recovery Automation</div>
+      <div style="font-size:12px;color:var(--cyan);font-family:var(--mono);margin-bottom:12px">Portfolio &mdash; Gowri BP &nbsp;&middot;&nbsp; Senior Application Support Analyst &nbsp;&middot;&nbsp; Banking Domain</div>
+      <div class="two-col">
+        <div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Recovery levels</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.8">
+            <span style="color:var(--cyan);font-family:var(--mono)">L1</span> MQ auto-recovery + idempotency on reconnect<br/>
+            <span style="color:var(--cyan);font-family:var(--mono)">L2</span> Safe replay — idempotency key, not state table alone<br/>
+            <span style="color:var(--cyan);font-family:var(--mono)">L3</span> Partial-state + downstream health check pre-publish<br/>
+            <span style="color:var(--cyan);font-family:var(--mono)">L4</span> Checkpoint resumption + amendment supersession check
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Controls &amp; design principles</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.8">
+            <span style="color:var(--green)">✓</span> Idempotency key — DB constraint enforced<br/>
+            <span style="color:var(--green)">✓</span> Settlement cut-off check by instrument type<br/>
+            <span style="color:var(--green)">✓</span> Governance matrix — instrument-aware thresholds<br/>
+            <span style="color:var(--green)">✓</span> Poison message quarantine + DLQ routing<br/>
+            <span style="color:var(--green)">✓</span> Replay throttling — batch size + prioritisation<br/>
+            <span style="color:var(--green)">✓</span> Trade dependency sequencing<br/>
+            <span style="color:var(--green)">✓</span> CLOSED_NO_ACTION audit evidence<br/>
+            <span style="color:var(--green)">✓</span> Downstream health check before publish-only
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Before vs. after</div>
+      <table class="gov-matrix" style="font-size:11px">
+        <thead><tr><th>Area</th><th>v1 (original)</th><th>v2 (corrected)</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--muted)">Duplicate prevention</td><td style="color:var(--amber)">Checks downstream_state table</td><td style="color:var(--green)">Idempotency key + DB upsert constraint</td></tr>
+          <tr><td style="color:var(--muted)">Governance threshold</td><td style="color:var(--amber)">Single $1M notional limit</td><td style="color:var(--green)">Matrix by instrument type + currency</td></tr>
+          <tr><td style="color:var(--muted)">Settlement awareness</td><td style="color:var(--red)">Not implemented</td><td style="color:var(--green)">Cut-off check → REQUIRES_AMENDMENT</td></tr>
+          <tr><td style="color:var(--muted)">Poison messages</td><td style="color:var(--red)">No max retry / could loop</td><td style="color:var(--green)">MAX_RETRIES=3 → QUARANTINED → DLQ</td></tr>
+          <tr><td style="color:var(--muted)">Replay under load</td><td style="color:var(--red)">No throttling</td><td style="color:var(--green)">Batch size config + priority ordering</td></tr>
+          <tr><td style="color:var(--muted)">Downstream health</td><td style="color:var(--amber)">Assumes downstream available</td><td style="color:var(--green)">Consumer count check before publish-only</td></tr>
+          <tr><td style="color:var(--muted)">No-action decisions</td><td style="color:var(--red)">Not audited</td><td style="color:var(--green)">CLOSED_NO_ACTION with mandatory reason</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="notif" id="notif"><div class="notif-title" id="notif-title"></div><div id="notif-body" style="color:var(--muted);font-size:11px"></div></div>
+
+<script>
+const TRADES=[
+  {id:'t01',ref:'TRD-001',inst:'AAPL',itype:'EQUITY',dir:'BUY', qty:500, price:182.50,notional:91250,  ccy:'USD',cpty:'Goldman Sachs',   status:'COMPLETED',         stage:'SETTLED',   ftype:'NONE',           retries:0,cutoff:'16:30',cutoff_passed:false},
+  {id:'t02',ref:'TRD-002',inst:'MSFT',itype:'EQUITY',dir:'SELL',qty:300, price:415.20,notional:124560, ccy:'USD',cpty:'JP Morgan',       status:'COMPLETED',         stage:'SETTLED',   ftype:'NONE',           retries:0,cutoff:'16:30',cutoff_passed:false},
+  {id:'t03',ref:'TRD-003',inst:'EUR/USD',itype:'FX', dir:'BUY', qty:1000,price:1.0875,notional:1087500,ccy:'EUR',cpty:'Deutsche Bank',   status:'COMPLETED',         stage:'SETTLED',   ftype:'NONE',           retries:0,cutoff:'17:00',cutoff_passed:false},
+  {id:'t04',ref:'TRD-004',inst:'AMZN',itype:'EQUITY',dir:'BUY', qty:200, price:185.30,notional:37060,  ccy:'USD',cpty:'Deutsche Bank',   status:'FAILED',            stage:'VALIDATED', ftype:'MQ_OUTAGE',      retries:1,cutoff:'16:30',cutoff_passed:false},
+  {id:'t05',ref:'TRD-005',inst:'NVDA',itype:'EQUITY',dir:'SELL',qty:150, price:875.40,notional:131310, ccy:'USD',cpty:'UBS',             status:'FAILED',            stage:'ENRICHED',  ftype:'MQ_OUTAGE',      retries:2,cutoff:'16:30',cutoff_passed:false},
+  {id:'t06',ref:'TRD-006',inst:'EUR/GBP',itype:'FX', dir:'SELL',qty:500, price:0.856, notional:428000, ccy:'EUR',cpty:'Citi',            status:'FAILED',            stage:'VALIDATED', ftype:'DB_TIMEOUT',     retries:1,cutoff:'17:00',cutoff_passed:false},
+  {id:'t07',ref:'TRD-007',inst:'GOOGL',itype:'EQUITY',dir:'SELL',qty:75, price:175.80,notional:13185,  ccy:'USD',cpty:'Morgan Stanley',  status:'FAILED',            stage:'BOOKED',    ftype:'PARTIAL_PUBLISH',retries:0,cutoff:'16:30',cutoff_passed:false},
+  {id:'t08',ref:'TRD-008',inst:'NFLX',itype:'EQUITY',dir:'BUY', qty:250, price:680.20,notional:170050, ccy:'USD',cpty:'HSBC',            status:'FAILED',            stage:'BOOKED',    ftype:'PARTIAL_PUBLISH',retries:1,cutoff:'16:30',cutoff_passed:false},
+  {id:'t09',ref:'TRD-009',inst:'5Y IRS',itype:'RATES',dir:'PAY', qty:1,  price:900000,notional:900000, ccy:'USD',cpty:'BlackRock',       status:'AWAITING_APPROVAL', stage:'VALIDATED', ftype:'DB_TIMEOUT',     retries:0,cutoff:'15:00',cutoff_passed:false},
+  {id:'t10',ref:'TRD-010',inst:'BRK.B',itype:'EQUITY',dir:'BUY', qty:5000,price:390.10,notional:1950500,ccy:'USD',cpty:'Vanguard',       status:'AWAITING_APPROVAL', stage:'VALIDATED', ftype:'DB_TIMEOUT',     retries:0,cutoff:'16:30',cutoff_passed:false},
+  {id:'t11',ref:'TRD-011',inst:'SPY',itype:'EQUITY',dir:'SELL',qty:1000,price:512.30,notional:512300,  ccy:'USD',cpty:'Vanguard',        status:'REPLAYING',         stage:'ENRICHED',  ftype:'MQ_OUTAGE',      retries:1,cutoff:'16:30',cutoff_passed:false},
+  {id:'t12',ref:'TRD-012',inst:'QQQ',itype:'EQUITY',dir:'BUY', qty:600, price:438.90,notional:263340,  ccy:'USD',cpty:'Fidelity',        status:'REPLAY_SUCCESS',    stage:'SETTLED',   ftype:'MQ_OUTAGE',      retries:2,cutoff:'16:30',cutoff_passed:false},
+  {id:'t13',ref:'TRD-013',inst:'GBP/JPY',itype:'FX', dir:'BUY', qty:200, price:195.40,notional:390800, ccy:'GBP',cpty:'State Street',   status:'QUARANTINED',       stage:'VALIDATED', ftype:'POISON_MESSAGE',  retries:3,cutoff:'17:00',cutoff_passed:false},
+  {id:'t14',ref:'TRD-014',inst:'TSLA',itype:'EQUITY',dir:'BUY', qty:100, price:248.75,notional:24875,  ccy:'USD',cpty:'Barclays',        status:'REQUIRES_AMENDMENT',stage:'VALIDATED', ftype:'DB_TIMEOUT',     retries:1,cutoff:'16:30',cutoff_passed:true},
+  {id:'t15',ref:'TRD-015',inst:'CDX IG',itype:'CREDIT',dir:'BUY',qty:1,  price:550000,notional:550000, ccy:'USD',cpty:'Goldman Sachs',   status:'AWAITING_APPROVAL', stage:'ENRICHED',  ftype:'MQ_OUTAGE',      retries:0,cutoff:'14:00',cutoff_passed:false},
+  {id:'t16',ref:'TRD-016',inst:'META',itype:'EQUITY',dir:'BUY', qty:400, price:512.90,notional:205160, ccy:'USD',cpty:'Citi',            status:'CLOSED_NO_ACTION',  stage:'VALIDATED', ftype:'DB_TIMEOUT',     retries:2,cutoff:'16:30',cutoff_passed:false},
+];
+
+const DS={
+  t01:{booked:true,published:true,settled:true,ledger:true,risk:true},
+  t02:{booked:true,published:true,settled:true,ledger:true,risk:true},
+  t03:{booked:true,published:true,settled:true,ledger:true,risk:true},
+  t04:{booked:false,published:false,settled:false,ledger:false,risk:false},
+  t05:{booked:false,published:false,settled:false,ledger:false,risk:false},
+  t06:{booked:false,published:false,settled:false,ledger:false,risk:false},
+  t07:{booked:true,published:false,settled:false,ledger:false,risk:false},
+  t08:{booked:true,published:false,settled:false,ledger:false,risk:false},
+  t09:{booked:false,published:false,settled:false,ledger:false,risk:false},
+  t10:{booked:false,published:false,settled:false,ledger:false,risk:false},
+  t11:{booked:false,published:false,settled:false,ledger:false,risk:false},
+  t12:{booked:true,published:true,settled:true,ledger:true,risk:true},
+  t13:{booked:false,published:false,settled:false,ledger:false,risk:false},
+  t14:{booked:false,published:false,settled:false,ledger:false,risk:false},
+  t15:{booked:false,published:false,settled:false,ledger:false,risk:false},
+  t16:{booked:false,published:false,settled:false,ledger:false,risk:false},
+};
+
+const TAUDIT={
+  t07:[
+    {time:'10:45:02',event:'TRADE_RECEIVED',corr:'CORR-007',init:'PRODUCER',detail:'SELL 75 GOOGL @ 175.80',outcome:'SUCCESS'},
+    {time:'10:45:04',event:'STAGE_VALIDATED',corr:'CORR-007',init:'PROCESSOR',detail:'Validation passed — idempotency key registered',outcome:'SUCCESS'},
+    {time:'10:45:05',event:'STAGE_BOOKED',corr:'CORR-007',init:'PROCESSOR',detail:'DB commit confirmed — idempotency key locked',outcome:'SUCCESS'},
+    {time:'10:45:06',event:'TRADE_FAILED',corr:'CORR-007',init:'PROCESSOR',detail:'Outbound MQ publish failed — partial state detected',outcome:'FAILED'},
+    {time:'10:45:06',event:'DOWNSTREAM_HEALTH_CHECK',corr:'CORR-007',init:'AUTO_ENGINE',detail:'Settlement consumers: 3 active — safe to replay publish',outcome:'SUCCESS'},
+  ],
+  t10:[
+    {time:'10:46:10',event:'TRADE_RECEIVED',corr:'CORR-010',init:'PRODUCER',detail:'BUY 5000 BRK.B @ 390.10 — notional $1,950,500',outcome:'SUCCESS'},
+    {time:'10:46:12',event:'TRADE_FAILED',corr:'CORR-010',init:'PROCESSOR',detail:'DB write timeout at BOOK stage',outcome:'FAILED'},
+    {time:'10:46:12',event:'IDEMPOTENCY_CHECK',corr:'CORR-010',init:'AUTO_ENGINE',detail:'Unique constraint confirmed — no prior commit found',outcome:'SUCCESS'},
+    {time:'10:46:12',event:'GOVERNANCE_CHECK',corr:'CORR-010',init:'AUTO_ENGINE',detail:'EQUITY notional $1,950,500 > $500,000 threshold → manual approval required',outcome:'PENDING'},
+    {time:'10:46:12',event:'REPLAY_HELD',corr:'CORR-010',init:'AUTO_ENGINE',detail:'Awaiting manual four-eyes approval before replay',outcome:'PENDING'},
+  ],
+  t12:[
+    {time:'10:42:01',event:'TRADE_RECEIVED',corr:'CORR-012',init:'PRODUCER',detail:'BUY 600 QQQ @ 438.90',outcome:'SUCCESS'},
+    {time:'10:42:03',event:'TRADE_FAILED',corr:'CORR-012',init:'PROCESSOR',detail:'MQ connection lost during PUBLISH stage',outcome:'FAILED'},
+    {time:'10:44:15',event:'IDEMPOTENCY_CHECK',corr:'REPLAY-A1',init:'AUTO_ENGINE',detail:'Unique constraint confirmed — BOOKED stage not committed',outcome:'SUCCESS'},
+    {time:'10:44:15',event:'REPLAY_INITIATED',corr:'REPLAY-A1',init:'AUTO_ENGINE',detail:'Scope: FULL_FROM_CHECKPOINT | Resume: ENRICHED | Batch slot: 1/10',outcome:'PENDING'},
+    {time:'10:44:17',event:'STAGE_BOOKED',corr:'REPLAY-A1',init:'PROCESSOR',detail:'DB upsert — idempotency key accepted (no prior commit)',outcome:'SUCCESS'},
+    {time:'10:44:18',event:'STAGE_PUBLISHED',corr:'REPLAY-A1',init:'PROCESSOR',detail:'Outbound publish — settlement consumers: 3 active',outcome:'SUCCESS'},
+    {time:'10:44:19',event:'STAGE_SETTLED',corr:'REPLAY-A1',init:'PROCESSOR',detail:'Settlement, ledger and risk updated',outcome:'SUCCESS'},
+    {time:'10:44:19',event:'REPLAY_SUCCESS',corr:'REPLAY-A1',init:'AUTO_ENGINE',detail:'Trade fully recovered via FULL_FROM_CHECKPOINT',outcome:'SUCCESS'},
+  ],
+  t13:[
+    {time:'11:02:00',event:'TRADE_RECEIVED',corr:'CORR-013',init:'PRODUCER',detail:'BUY 200 GBP/JPY @ 195.40 — BIC code unresolvable',outcome:'SUCCESS'},
+    {time:'11:02:01',event:'TRADE_FAILED',corr:'CORR-013',init:'PROCESSOR',detail:'Reference data error — counterparty BIC not found in SSI',outcome:'FAILED'},
+    {time:'11:02:05',event:'AUTO_RETRY',corr:'CORR-013',init:'AUTO_ENGINE',detail:'Retry 1/3 — 5s backoff',outcome:'FAILED'},
+    {time:'11:02:15',event:'AUTO_RETRY',corr:'CORR-013',init:'AUTO_ENGINE',detail:'Retry 2/3 — 15s backoff',outcome:'FAILED'},
+    {time:'11:02:35',event:'AUTO_RETRY',corr:'CORR-013',init:'AUTO_ENGINE',detail:'Retry 3/3 — MAX_RETRIES reached',outcome:'FAILED'},
+    {time:'11:02:35',event:'QUARANTINE',corr:'CORR-013',init:'AUTO_ENGINE',detail:'Failure type reclassified: POISON_MESSAGE — routing to DLQ',outcome:'ACTIVE'},
+    {time:'11:02:35',event:'DLQ_ROUTED',corr:'CORR-013',init:'AUTO_ENGINE',detail:'Message placed on trade.dlq — manual investigation required',outcome:'ACTIVE'},
+  ],
+  t14:[
+    {time:'16:32:00',event:'TRADE_RECEIVED',corr:'CORR-014',init:'PRODUCER',detail:'BUY 100 TSLA @ 248.75 — value date today',outcome:'SUCCESS'},
+    {time:'16:32:02',event:'TRADE_FAILED',corr:'CORR-014',init:'PROCESSOR',detail:'DB write timeout at BOOK stage',outcome:'FAILED'},
+    {time:'16:32:02',event:'IDEMPOTENCY_CHECK',corr:'CORR-014',init:'AUTO_ENGINE',detail:'Unique constraint confirmed — no prior commit',outcome:'SUCCESS'},
+    {time:'16:32:02',event:'CUTOFF_CHECK',corr:'CORR-014',init:'AUTO_ENGINE',detail:'EQUITY cut-off 16:30 ET — current time 16:32 — PAST CUT-OFF',outcome:'FAILED'},
+    {time:'16:32:02',event:'REPLAY_BLOCKED',corr:'CORR-014',init:'AUTO_ENGINE',detail:'Auto-replay blocked — settlement would miss DTCC batch for T+1',outcome:'ACTIVE'},
+    {time:'16:32:03',event:'FRONT_OFFICE_ALERT',corr:'CORR-014',init:'AUTO_ENGINE',detail:'Status set to REQUIRES_AMENDMENT — front office notification sent',outcome:'ACTIVE'},
+  ],
+  t16:[
+    {time:'10:55:00',event:'TRADE_RECEIVED',corr:'CORR-016',init:'PRODUCER',detail:'BUY 400 META @ 512.90',outcome:'SUCCESS'},
+    {time:'10:55:02',event:'TRADE_FAILED',corr:'CORR-016',init:'PROCESSOR',detail:'DB write timeout at BOOK stage',outcome:'FAILED'},
+    {time:'11:10:00',event:'MANUAL_REVIEW',corr:'CORR-016',init:'OPERATOR',detail:'Trade reviewed — client cancelled position before replay',outcome:'INFO'},
+    {time:'11:10:05',event:'CLOSED_NO_ACTION',corr:'CORR-016',init:'OPERATOR',detail:'Decision: do not replay. Reason: Client cancellation confirmed via voice. Approved by: DESK_HEAD',outcome:'SUCCESS'},
+  ],
+};
+
+const AUDIT_ALL=[
+  {time:'10:42:01',event:'TRADE_RECEIVED',ref:'TRD-012',corr:'CORR-012',init:'PRODUCER',detail:'BUY 600 QQQ @ 438.90',outcome:'SUCCESS'},
+  {time:'10:42:03',event:'TRADE_FAILED',ref:'TRD-012',corr:'CORR-012',init:'PROCESSOR',detail:'MQ connection lost during PUBLISH',outcome:'FAILED'},
+  {time:'10:44:15',event:'IDEMPOTENCY_CHECK',ref:'TRD-012',corr:'REPLAY-A1',init:'AUTO_ENGINE',detail:'No prior commit confirmed via unique constraint',outcome:'SUCCESS'},
+  {time:'10:44:15',event:'REPLAY_INITIATED',ref:'TRD-012',corr:'REPLAY-A1',init:'AUTO_ENGINE',detail:'Scope: FULL_FROM_CHECKPOINT | Resume: ENRICHED',outcome:'PENDING'},
+  {time:'10:44:19',event:'REPLAY_SUCCESS',ref:'TRD-012',corr:'REPLAY-A1',init:'AUTO_ENGINE',detail:'Trade fully recovered',outcome:'SUCCESS'},
+  {time:'10:46:12',event:'IDEMPOTENCY_CHECK',ref:'TRD-010',corr:'CORR-010',init:'AUTO_ENGINE',detail:'Unique constraint confirmed — no prior commit',outcome:'SUCCESS'},
+  {time:'10:46:12',event:'GOVERNANCE_CHECK',ref:'TRD-010',corr:'CORR-010',init:'AUTO_ENGINE',detail:'EQUITY $1,950,500 > $500K limit — manual approval required',outcome:'PENDING'},
+  {time:'10:46:12',event:'REPLAY_HELD',ref:'TRD-010',corr:'CORR-010',init:'AUTO_ENGINE',detail:'Awaiting four-eyes approval',outcome:'PENDING'},
+  {time:'11:02:35',event:'QUARANTINE',ref:'TRD-013',corr:'CORR-013',init:'AUTO_ENGINE',detail:'MAX_RETRIES reached — POISON_MESSAGE — routed to DLQ',outcome:'ACTIVE'},
+  {time:'11:10:05',event:'CLOSED_NO_ACTION',ref:'TRD-016',corr:'CORR-016',init:'OPERATOR',detail:'Client cancellation — decision not to replay. Approved: DESK_HEAD',outcome:'SUCCESS'},
+  {time:'16:32:02',event:'CUTOFF_CHECK',ref:'TRD-014',corr:'CORR-014',init:'AUTO_ENGINE',detail:'EQUITY cut-off 16:30 — current time 16:32 — PAST CUT-OFF',outcome:'FAILED'},
+  {time:'16:32:02',event:'REPLAY_BLOCKED',ref:'TRD-014',corr:'CORR-014',init:'AUTO_ENGINE',detail:'Auto-replay blocked — REQUIRES_AMENDMENT',outcome:'ACTIVE'},
+  {time:'10:45:06',event:'DOWNSTREAM_HEALTH_CHECK',ref:'TRD-007',corr:'CORR-007',init:'AUTO_ENGINE',detail:'Settlement consumers: 3 active — safe to publish',outcome:'SUCCESS'},
+  {time:'10:55:00',event:'TRADE_RECEIVED',ref:'TRD-016',corr:'CORR-016',init:'PRODUCER',detail:'BUY 400 META @ 512.90',outcome:'SUCCESS'},
+  {time:'10:55:02',event:'TRADE_FAILED',ref:'TRD-016',corr:'CORR-016',init:'PROCESSOR',detail:'DB write timeout at BOOK stage',outcome:'FAILED'},
+  {time:'11:10:00',event:'MANUAL_REVIEW',ref:'TRD-016',corr:'CORR-016',init:'OPERATOR',detail:'Trade reviewed — client cancelled position',outcome:'INFO'},
+];
+
+
+let activeScenarios={mq:false,db:false,pp:false,cutoff:false,poison:false};
+let selectedId=null;
+let tradeList=[...TRADES];
+let auditList=[...AUDIT_ALL];
+let tradeCounter=17;
+const $=id=>document.getElementById(id);
+
+function fmt(n){return '$'+Number(n).toLocaleString();}
+function tick(){const now=new Date();$('clock').textContent=now.toLocaleTimeString('en-GB');$('last-refresh').textContent='Live · '+now.toLocaleTimeString('en-GB');}
+setInterval(tick,1000);tick();
+
+function showTab(name,el){
+  document.querySelectorAll('.content').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  $('tab-'+name).classList.add('active');
+  if(el)el.classList.add('active');
+  if(name==='trades')renderTrades();
+  if(name==='audit')renderAudit();
+  if(name==='dashboard')renderDashAudit();
+  if(name==='break')renderBreakSteps();
+}
+
+function statusBadge(s){
+  const m={COMPLETED:'b-completed',FAILED:'b-failed',REPLAYING:'b-replaying',REPLAY_SUCCESS:'b-replay_success',REPLAY_FAILED:'b-replay_failed',AWAITING_APPROVAL:'b-awaiting',PENDING:'b-pending',QUARANTINED:'b-quarantined',REQUIRES_AMENDMENT:'b-requires_amendment',SUPERSEDED:'b-superseded',CLOSED_NO_ACTION:'b-closed'};
+  return `<span class="badge ${m[s]||'b-pending'}">${s.replace(/_/g,' ')}</span>`;
+}
+function outcomeDot(o){return o==='SUCCESS'?'var(--green)':o==='FAILED'?'var(--red)':o==='ACTIVE'?'var(--purple)':o==='INFO'?'var(--blue)':'var(--amber)';}
+function outcomeClass(o){return o==='SUCCESS'?'tl-success':o==='FAILED'?'tl-failed':o==='INFO'?'tl-info':'tl-pending';}
+
+function notify(title,body,color='var(--blue)'){
+  const el=$('notif');$('notif-title').textContent=title;$('notif-title').style.color=color;$('notif-body').textContent=body;
+  el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+function govCheck(t){
+  const matrix={EQUITY:500000,FX:2000000,RATES:0,CREDIT:0};
+  const limit=matrix[t.itype];
+  if(limit===0)return{auto:false,reason:`${t.itype} instrument — always requires manual approval regardless of notional`};
+  if(t.notional>limit)return{auto:false,reason:`${t.itype} notional ${fmt(t.notional)} exceeds ${fmt(limit)} auto-replay limit`};
+  return{auto:true,reason:`${t.itype} notional ${fmt(t.notional)} within ${fmt(limit)} auto-replay limit`};
+}
+
+function updateDashStats(){
+  const by=s=>tradeList.filter(t=>t.status===s).length;
+  $('stat-total').textContent=tradeList.length;
+  $('stat-failed').textContent=by('FAILED');
+  $('stat-replaying').textContent=by('REPLAYING');
+  $('stat-approval').textContent=tradeList.filter(t=>t.status==='AWAITING_APPROVAL').length;
+  $('stat-quarantined').textContent=by('QUARANTINED');
+  $('stat-amendment').textContent=by('REQUIRES_AMENDMENT');
+  $('stat-success').textContent=by('REPLAY_SUCCESS')+by('COMPLETED');
+}
+
+function renderDashAudit(){
+  $('dash-audit-rows').innerHTML=auditList.slice(0,8).map(e=>`<tr><td class="mono" style="color:var(--muted);font-size:11px">${e.time}</td><td style="font-weight:500;font-family:var(--mono);font-size:11px">${e.event}</td><td class="mono" style="color:var(--cyan);font-size:11px">${e.ref}</td><td><span style="font-size:10px;background:var(--surface);padding:2px 6px;border-radius:3px;color:var(--muted)">${e.init}</span></td><td style="color:var(--muted);font-size:11px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.detail}</td><td><span class="${outcomeClass(e.outcome)} tl-outcome">${e.outcome}</span></td></tr>`).join('');
+  updateDashStats();
+}
+
+function renderTrades(){
+  $('trade-rows').innerHTML=tradeList.map(t=>`<tr onclick="selectTrade('${t.id}')" ${selectedId===t.id?'class="selected"':''}>
+    <td class="mono" style="color:var(--cyan)">${t.ref}</td>
+    <td style="font-weight:500">${t.inst}</td>
+    <td><span class="itype-pill itype-${t.itype}">${t.itype}</span></td>
+    <td class="${t.dir==='BUY'?'dir-buy':'dir-sell'}">${t.dir}</td>
+    <td class="mono">${fmt(t.notional)}</td>
+    <td style="color:var(--muted);font-size:11px">${t.ccy}</td>
+    <td style="color:var(--muted)">${t.cpty}</td>
+    <td>${statusBadge(t.status)}</td>
+    <td><span class="stage-pill">${t.stage}</span></td>
+    <td style="font-family:var(--mono);font-size:10px;color:${t.ftype!=='NONE'?'var(--amber)':'var(--dim)'}">${t.ftype}</td>
+    <td style="color:${t.retries>=3?'var(--red)':t.retries>0?'var(--amber)':'var(--dim)'}">${t.retries}</td>
+    <td><span style="font-size:10px;font-family:var(--mono);color:${t.cutoff_passed?'var(--rose)':'var(--muted)'}">${t.cutoff}${t.cutoff_passed?' ⚠':''}${t.cutoff_passed?' PASSED':''}</span></td>
+  </tr>`).join('');
+  updateDashStats();
+}
+
+function selectTrade(id){
+  selectedId=id;renderTrades();
+  const t=tradeList.find(x=>x.id===id);if(!t)return;
+  const panel=$('detail-panel');panel.classList.add('open');
+  const ds=DS[id]||{booked:false,published:false,settled:false,ledger:false,risk:false};
+  const gov=govCheck(t);
+  const canReplay=['FAILED','REPLAY_FAILED'].includes(t.status);
+  const needsApproval=t.status==='AWAITING_APPROVAL';
+
+  $('detail-kv').innerHTML=[
+    ['Instrument',t.inst],['Type',`<span class="itype-pill itype-${t.itype}">${t.itype}</span>`],
+    ['Direction',`<span class="${t.dir==='BUY'?'dir-buy':'dir-sell'}">${t.dir}</span>`],
+    ['Notional',`<span style="font-weight:500">${fmt(t.notional)}</span>`],
+    ['Currency',t.ccy],['Counterparty',t.cpty],
+    ['Status',statusBadge(t.status)],
+    ['Stage',`<span class="stage-pill">${t.stage}</span>`],
+    ['Settlement cut-off',`<span style="font-family:var(--mono);font-size:11px;color:${t.cutoff_passed?'var(--rose)':'var(--muted)'}">${t.cutoff}${t.cutoff_passed?' — ⚠ PASSED':''}</span>`],
+    ['Retries',`<span style="color:${t.retries>=3?'var(--red)':t.retries>0?'var(--amber)':'var(--text)'}">${t.retries}${t.retries>=3?' (MAX)':''}</span>`],
+    ['Idempotency key',`<span class="mono" style="color:var(--green);font-size:11px">${t.ref}:${t.stage}</span>`],
+    ['Correlation ID',`<span class="mono" style="color:var(--blue);font-size:11px">CORR-${id.slice(1).padStart(3,'0')}</span>`],
+  ].map(([k,v])=>`<div class="kv"><span class="kv-label">${k}</span><span>${v}</span></div>`).join('');
+
+  $('detail-ds').innerHTML='<div class="detail-title" style="margin-top:4px">Downstream state</div>'+
+    [['Booked internally',ds.booked],['Published downstream',ds.published],['Settlement generated',ds.settled],['Ledger updated',ds.ledger],['Risk system updated',ds.risk]]
+    .map(([l,d])=>`<div class="check-row"><div class="check-left"><span style="font-size:14px">${d?'✅':'⭕'}</span><span style="color:${d?'var(--text)':'var(--muted)'}">${l}</span></div><span class="badge ${d?'b-completed':'b-failed'}" style="font-size:9px">${d?'PRESENT':'MISSING'}</span></div>`).join('');
+
+  let scope=ds.booked&&!ds.published?'PUBLISH_ONLY':'FULL_FROM_CHECKPOINT';
+  let resume=ds.booked&&!ds.published?'BOOKED':t.stage;
+  let assessHtml='';
+
+  if(t.status==='REQUIRES_AMENDMENT'){
+    assessHtml=`<div class="danger-box" style="margin-top:10px">⚠ Settlement cut-off has passed for ${t.itype} (${t.cutoff}). Auto-replay is blocked. This trade requires a value date amendment by the front office before it can be reprocessed.</div>`;
+  } else if(t.status==='QUARANTINED'){
+    assessHtml=`<div class="danger-box" style="margin-top:10px">☠ Trade quarantined after ${t.retries} failed attempts. Failure type reclassified as POISON_MESSAGE. Message routed to DLQ. Manual investigation required — check reference data / BIC / SSI.</div>`;
+  } else if(t.status==='CLOSED_NO_ACTION'){
+    assessHtml=`<div class="info-box" style="margin-top:10px">📋 Closed — no action taken. Decision recorded in audit trail with approver identity and reason. This is auditable evidence of the decision NOT to replay.</div>`;
+  } else if(canReplay||needsApproval){
+    const govHtml=gov.auto?`<div class="success-box">✓ Governance: ${gov.reason}</div>`:`<div class="warn-box">⚠ Governance: ${gov.reason}</div>`;
+    const idempHtml=`<div class="success-box">✓ Idempotency: unique constraint on ${t.ref}:BOOKED — DB confirms no prior commit</div>`;
+    const cutoffHtml=t.cutoff_passed?`<div class="danger-box">✗ Cut-off: ${t.cutoff} passed — replay blocked</div>`:`<div class="success-box">✓ Cut-off: ${t.cutoff} not yet reached</div>`;
+    let btnHtml='';
+    if(t.status==='REQUIRES_AMENDMENT'){btnHtml=`<div class="danger-box">Replay blocked — past settlement cut-off</div>`;}
+    else if(needsApproval){btnHtml=`<button class="btn btn-warning" style="width:100%;justify-content:center;margin-top:10px" onclick="approveAndReplay('${t.id}')">✓ Approve & replay (manual four-eyes)</button>`;}
+    else if(canReplay){btnHtml=`<button class="btn btn-replay" style="width:100%;justify-content:center;margin-top:10px" onclick="doReplay('${t.id}')">↻ ${scope} replay</button>`;}
+    assessHtml=`<div class="assessment" style="margin-top:10px">
+      <div class="detail-title" style="margin-bottom:6px">Replay assessment</div>
+      <span class="assessment-scope">${scope}</span>
+      <div class="kv" style="padding:5px 0"><span class="kv-label">Resume from</span><span class="stage-pill">${resume}</span></div>
+      ${idempHtml}${govHtml}${cutoffHtml}${btnHtml}
+    </div>`;
+  }
+  $('detail-assessment').innerHTML=assessHtml;
+
+  const entries=TAUDIT[id]||[{time:'—',event:'TRADE_RECEIVED',corr:`CORR-${id.slice(1).padStart(3,'0')}`,init:'PRODUCER',detail:'Trade entered system',outcome:'SUCCESS'}];
+  $('detail-audit').innerHTML=entries.map(e=>`<div class="tl-row"><div class="tl-dot" style="background:${outcomeDot(e.outcome)}"></div><div class="tl-body"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="tl-event">${e.event}</span><span style="font-size:10px;background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--muted)">${e.init}</span><span class="${outcomeClass(e.outcome)} tl-outcome">${e.outcome}</span></div><div class="tl-detail">${e.detail}</div><div class="tl-corr">${e.corr}</div></div><div class="tl-time">${e.time}</div></div>`).join('');
+}
+
+function doReplay(id){
+  const t=tradeList.find(x=>x.id===id);if(!t)return;
+  t.status='REPLAYING';t.retries++;renderTrades();selectTrade(id);
+  notify('Replay initiated',`${t.ref} — idempotency check passed`,'var(--purple)');
+  setTimeout(()=>{
+    t.status='REPLAY_SUCCESS';t.stage='SETTLED';
+    const d=DS[id];if(d){d.booked=true;d.published=true;d.settled=true;d.ledger=true;d.risk=true;}
+    const corr='REPLAY-'+Math.random().toString(36).slice(2,6).toUpperCase();
+    const now=new Date().toLocaleTimeString('en-GB');
+    if(!TAUDIT[id])TAUDIT[id]=[];
+    TAUDIT[id].push({time:now,event:'REPLAY_SUCCESS',corr,init:'AUTO_ENGINE',detail:'Trade fully recovered',outcome:'SUCCESS'});
+    auditList.unshift({time:now,event:'REPLAY_SUCCESS',ref:t.ref,corr,init:'AUTO_ENGINE',detail:'Trade fully recovered',outcome:'SUCCESS'});
+    renderTrades();selectTrade(id);renderDashAudit();
+    notify('Replay successful ✓',`${t.ref} settled`,'var(--green)');
+  },2200);
+}
+
+function approveAndReplay(id){
+  const t=tradeList.find(x=>x.id===id);if(!t)return;
+  const now=new Date().toLocaleTimeString('en-GB');
+  const gov=govCheck(t);
+  auditList.unshift({time:now,event:'MANUAL_APPROVAL',ref:t.ref,corr:`CORR-${id.slice(1).padStart(3,'0')}`,init:'OPERATOR',detail:`Four-eyes approval granted — ${gov.reason}`,outcome:'SUCCESS'});
+  if(!TAUDIT[id])TAUDIT[id]=[];
+  TAUDIT[id].push({time:now,event:'MANUAL_APPROVAL',corr:`CORR-${id.slice(1).padStart(3,'0')}`,init:'OPERATOR',detail:'Manually approved — four-eyes control satisfied',outcome:'SUCCESS'});
+  t.status='FAILED';doReplay(id);
+}
+
+function simulateNewTrade(){
+  const insts=[{inst:'AAPL',itype:'EQUITY',ccy:'USD'},{inst:'EUR/USD',itype:'FX',ccy:'EUR'},{inst:'5Y IRS',itype:'RATES',ccy:'USD'},{inst:'CDX IG',itype:'CREDIT',ccy:'USD'},{inst:'MSFT',itype:'EQUITY',ccy:'USD'}];
+  const pick=insts[Math.floor(Math.random()*insts.length)];
+  const cptys=['Goldman Sachs','JP Morgan','Barclays','Deutsche Bank','UBS'];
+  const cpty=cptys[Math.floor(Math.random()*cptys.length)];
+  const dir=Math.random()>.5?'BUY':'SELL';
+  const qty=[100,200,500,1000][Math.floor(Math.random()*4)];
+  const price=Math.round((100+Math.random()*900)*100)/100;
+  const notional=qty*price;
+  const cutoffs={EQUITY:'16:30',FX:'17:00',RATES:'15:00',CREDIT:'14:00'};
+  const ref=`TRD-${tradeCounter++}`;
+  const id='tn'+tradeCounter;
+
+  let status,stage,ftype;
+  if(activeScenarios.mq){status='FAILED';stage='RECEIVED';ftype='MQ_OUTAGE';}
+  else if(activeScenarios.db){status='FAILED';stage='VALIDATED';ftype='DB_TIMEOUT';}
+  else if(activeScenarios.pp){status='FAILED';stage='BOOKED';ftype='PARTIAL_PUBLISH';}
+  else if(activeScenarios.cutoff){status='REQUIRES_AMENDMENT';stage='VALIDATED';ftype='DB_TIMEOUT';}
+  else if(activeScenarios.poison){status='QUARANTINED';stage='VALIDATED';ftype='POISON_MESSAGE';}
+  else{status='COMPLETED';stage='SETTLED';ftype='NONE';}
+
+  const cutoff_passed=activeScenarios.cutoff;
+  tradeList.unshift({id,ref,inst:pick.inst,itype:pick.itype,dir,qty,price,notional,ccy:pick.ccy,cpty,status,stage,ftype,retries:activeScenarios.poison?3:0,cutoff:cutoffs[pick.itype],cutoff_passed});
+  DS[id]={booked:status==='COMPLETED'||ftype==='PARTIAL_PUBLISH',published:status==='COMPLETED',settled:status==='COMPLETED',ledger:status==='COMPLETED',risk:status==='COMPLETED'};
+  const now=new Date().toLocaleTimeString('en-GB');
+  const corr='CORR-'+Math.random().toString(36).slice(2,6).toUpperCase();
+  TAUDIT[id]=[{time:now,event:'TRADE_RECEIVED',corr,init:'PRODUCER',detail:`${dir} ${qty} ${pick.inst} — idempotency key registered`,outcome:'SUCCESS'}];
+  if(status!=='COMPLETED'){
+    const reasons={MQ_OUTAGE:'MQ connection lost',DB_TIMEOUT:'DB write timeout at BOOK stage',PARTIAL_PUBLISH:'Outbound MQ publish failed',POISON_MESSAGE:'Reference data error — BIC not found',NONE:''};
+    TAUDIT[id].push({time:now,event:'TRADE_FAILED',corr,init:'PROCESSOR',detail:reasons[ftype]||ftype,outcome:'FAILED'});
+    if(status==='REQUIRES_AMENDMENT')TAUDIT[id].push({time:now,event:'CUTOFF_CHECK',corr,init:'AUTO_ENGINE',detail:`${pick.itype} cut-off ${cutoffs[pick.itype]} — PAST CUT-OFF — replay blocked`,outcome:'FAILED'});
+    if(status==='QUARANTINED')TAUDIT[id].push({time:now,event:'QUARANTINE',corr,init:'AUTO_ENGINE',detail:'MAX_RETRIES=3 reached — routed to DLQ',outcome:'ACTIVE'});
+  }
+  auditList.unshift({time:now,event:status==='COMPLETED'?'TRADE_RECEIVED':'TRADE_FAILED',ref,corr,init:status==='COMPLETED'?'PRODUCER':'PROCESSOR',detail:`${dir} ${qty} ${pick.inst}`,outcome:status==='COMPLETED'?'SUCCESS':'FAILED'});
+  renderTrades();renderDashAudit();
+  notify(status==='COMPLETED'?'Trade completed':status==='QUARANTINED'?'Trade quarantined ☠':status==='REQUIRES_AMENDMENT'?'Cut-off passed ⏰':`Trade failed — ${ftype}`,ref+': '+pick.inst,status==='COMPLETED'?'var(--green)':'var(--red)');
+  selectTrade(id);
+}
+
+function injectScenario(s){
+  activeScenarios[s]=true;updateBreakUI();
+  const names={mq:'MQ Outage',db:'DB Timeout',pp:'Partial Publish',cutoff:'Settlement Cut-off',poison:'Poison Message'};
+  const now=new Date().toLocaleTimeString('en-GB');
+  auditList.unshift({time:now,event:s.toUpperCase()+'_INJECTED',ref:'—',corr:'—',init:'OPERATOR',detail:names[s]+' scenario activated',outcome:'ACTIVE'});
+  renderDashAudit();notify('⚡ '+names[s]+' active','Go to Trades → Produce trade to observe','var(--red)');
+}
+
+function healAll(){
+  activeScenarios={mq:false,db:false,pp:false,cutoff:false,poison:false};updateBreakUI();
+  const now=new Date().toLocaleTimeString('en-GB');
+  auditList.unshift({time:now,event:'SYSTEM_HEALED',ref:'—',corr:'—',init:'OPERATOR',detail:'All failure scenarios cleared',outcome:'SUCCESS'});
+  renderDashAudit();notify('✓ All systems healed','MQ connected · DB available','var(--green)');
+}
+
+function updateBreakUI(){
+  const any=Object.values(activeScenarios).some(Boolean);
+  const connected=!activeScenarios.mq;
+  $('mq-dot').className=`pulse ${connected?'pulse-green':'pulse-red'}`;
+  $('mq-label').textContent=connected?'MQ CONNECTED':'MQ DISCONNECTED';
+  $('dash-mq-dot').className=`pulse ${connected?'pulse-green':'pulse-red'}`;
+  $('dash-mq-label').textContent='RabbitMQ — '+(connected?'Connected':'Disconnected');
+  $('q-inbound').textContent=activeScenarios.mq?'—':'0';
+  $('q-dlq').textContent=activeScenarios.mq?'12':activeScenarios.poison?'1':'0';
+  $('q-dlq').style.color=activeScenarios.mq||activeScenarios.poison?'var(--red)':'var(--green)';
+  const tags=$('scenario-tags');
+  if(!any){tags.innerHTML='<span class="alert-tag alert-green">● All systems nominal</span>';}
+  else{let t='';
+    if(activeScenarios.mq)t+='<span class="alert-tag alert-red">● MQ outage</span>';
+    if(activeScenarios.db)t+='<span class="alert-tag alert-red" style="margin-left:6px">● DB timeout</span>';
+    if(activeScenarios.pp)t+='<span class="alert-tag alert-amber" style="margin-left:6px">● Partial publish</span>';
+    if(activeScenarios.cutoff)t+='<span class="alert-tag alert-purple" style="margin-left:6px">● Cut-off passed</span>';
+    if(activeScenarios.poison)t+='<span class="alert-tag alert-purple" style="margin-left:6px">● Poison message</span>';
+    tags.innerHTML=t;
+  }
+  ['mq','db','pp','cutoff','poison'].forEach(s=>{
+    const a=activeScenarios[s];
+    const bc=$('bc-'+s);if(bc)bc.classList.toggle('active',a);
+    const ab=$('active-'+s);if(ab)ab.style.display=a?'block':'none';
+    const btn=$('btn-'+s);if(btn){const labels={mq:'Inject MQ Outage',db:'Inject DB Timeout',pp:'Inject Partial Publish',cutoff:'Inject Cut-off Scenario',poison:'Inject Poison Message'};btn.textContent=a?'✓ Active':labels[s];btn.className=`btn ${a?'':'btn-danger'}`;}
+  });
+  const banner=$('break-banner');
+  if(any){banner.style.background='#7f1d1d18';banner.style.borderColor='#7f1d1d55';banner.innerHTML='<strong style="color:var(--red)">🔴 System degraded</strong> — Produce a trade in the Trades tab to observe the failure scenario.';}
+  else{banner.style.background='#14532d18';banner.style.borderColor='#14532d55';banner.innerHTML='<strong style="color:var(--green)">🟢 All systems healthy</strong> — Inject a scenario below, then go to Trades → Produce trade.';}
+}
+
+function renderBreakSteps(){}
+
+function renderAudit(){
+  const q=($('audit-filter')||{}).value||'';
+  const filtered=q?auditList.filter(e=>e.event.includes(q.toUpperCase())||e.init.toUpperCase().includes(q.toUpperCase())||(e.detail||'').toLowerCase().includes(q.toLowerCase())):auditList;
+  $('audit-rows').innerHTML=filtered.map(e=>`<tr><td class="mono" style="color:var(--muted);font-size:11px;white-space:nowrap">${e.time}</td><td style="font-weight:500;font-family:var(--mono);font-size:11px;white-space:nowrap">${e.event}</td><td class="mono" style="color:var(--cyan);font-size:11px">${e.ref}</td><td class="mono" style="color:var(--blue);font-size:10px">${e.corr}</td><td><span style="font-size:10px;background:var(--surface);padding:2px 6px;border-radius:3px;color:var(--muted)">${e.init}</span></td><td style="color:var(--muted);font-size:11px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.detail}</td><td><span class="${outcomeClass(e.outcome)} tl-outcome">${e.outcome}</span></td></tr>`).join('');
+}
+function filterAudit(){renderAudit();}
+
+renderTrades();renderDashAudit();renderBreakSteps();updateDashStats();
+</script>
+</body>
+</html>
